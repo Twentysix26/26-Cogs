@@ -1,0 +1,8 @@
+{
+    "AUTHOR" : "Twentysix",
+    "SHORT" : "Talk with Cleverbot!",
+    "DESCRIPTION" : "Allows for interaction with Cleverbot through mention/command\nRequirement:\npip3 install cleverbot",
+    "DISABLED" : false,
+    "NAME" : "Cleverbot",
+    "INSTALL_MSG" : "`[p]cleverbot <text>` to talk with cleverbot.\n`@Mention <text>` works too.\n`[p]cleverbot toggle` disables replies by mention."
+}
