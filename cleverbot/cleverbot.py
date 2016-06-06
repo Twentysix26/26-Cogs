@@ -18,7 +18,7 @@ class Cleverbot():
     @commands.group(no_pm=True, invoke_without_command=True)
     async def cleverbot(self, *, message):
         """Talk with cleverbot"""
-        await self.get_response(msg)
+        result = await self.get_response(message)
         await self.bot.say(result)
 
     @cleverbot.command()
