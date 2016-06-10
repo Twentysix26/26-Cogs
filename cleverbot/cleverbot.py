@@ -1,4 +1,7 @@
-from cleverbot import Cleverbot as Clv
+try:
+    from cleverbot import Cleverbot as Clv
+except:
+    Clv = False
 from discord.ext import commands
 from cogs.utils import checks
 from .utils.dataIO import dataIO
@@ -62,6 +65,10 @@ def check_files():
         dataIO.save_json(f, data)
 
 def setup(bot):
+    if Clv is False:
+        raise RuntimeError("You're missing the cleverbot library.\n"
+                           "Install it with: 'pip3 install cleverbot' "
+                           "and reload the module.")
     check_folders()
     check_files()
     n = Cleverbot(bot)
