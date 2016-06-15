@@ -43,10 +43,11 @@ class Cleverbot():
         return answer
 
     async def on_message(self, message):
-        if not self.settings["TOGGLE"]:
+        if not self.settings["TOGGLE"] or message.channel.is_private:
             return
+
         if message.author.id != self.bot.user.id:
-            mention = self.bot.user.mention
+            mention = message.server.me.mention
             if message.content.startswith(mention):
                 content = message.content.replace(mention, "").strip()
                 await self.bot.send_typing(message.channel)
