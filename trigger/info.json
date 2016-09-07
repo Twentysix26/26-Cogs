@@ -1,0 +1,8 @@
+{
+    "AUTHOR" : "Twentysix",
+    "SHORT" : "Create customizable triggers!",
+    "DESCRIPTION" : "Allows the creation of customizable triggers",
+    "DISABLED" : false,
+    "NAME" : "Trigger",
+    "INSTALL_MSG" : "`[p]help trigger` for more info. `[p]help trigger set` for an explanation of the settings.\nTriggers can be annoying. Be responsible and don't abuse them."
+}
