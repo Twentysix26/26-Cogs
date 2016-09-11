@@ -1,6 +1,7 @@
 import discord
 import datetime
 import os
+import asyncio
 from discord.ext import commands
 from __main__ import send_cmd_help
 from cogs.utils import checks
@@ -36,6 +37,7 @@ class Trigger:
         self.bot = bot
         self.triggers = []
         self.load_triggers()
+        self.stats_task = bot.loop.create_task(self.save_stats())
 
     @commands.group(pass_context=True)
     async def trigger(self, ctx):
@@ -145,19 +147,19 @@ class Trigger:
         if trigger:
             msg = "Name: {}\n".format(trigger.name)
             owner_name = discord.utils.get(self.bot.get_all_members(), id=trigger.owner)
-            owner_name = owner_name if owner_name is not None else "Not found"
+            owner_name = owner_name if owner_name is not None else "not found"
             msg += "Owner: {} ({})\n".format(owner_name, trigger.owner)
-            trigger_type = "All responses" if trigger.type == "all" else "Random response"
+            trigger_type = "all responses" if trigger.type == "all" else "random response"
             msg += "Type: {}\n".format(trigger_type)
-            influence = "Server" if trigger.server is not None else "Global"
+            influence = "server" if trigger.server is not None else "global"
             msg += "Influence: {}\n".format(influence)
+            cs = "yes" if trigger.case_sensitive else "no"
+            msg += "Case Sensitive: {}\n".format(cs)
             msg += "Cooldown: {} seconds\n".format(trigger.cooldown)
-            msg += "Triggered by: \"{}\"\n".format(trigger.triggered_by.replace("`", "\\`"))
-            #responses = self.elaborate_payload(trigger.responses, truncate=50)
-            #msg += "Payload: {}\n".format("\n".join(responses))
+            msg += "Triggered By: \"{}\"\n".format(trigger.triggered_by.replace("`", "\\`"))
             msg += "Payload: {} responses\n".format(len(trigger.responses))
             msg += "Triggered: {} times\n".format(trigger.triggered)
-            await self.bot.say(box(msg, lang="erlang"))
+            await self.bot.say(box(msg, lang="xl"))
         else:
             await self.bot.say("There is no trigger with that name.")
 
@@ -206,7 +208,8 @@ class Trigger:
 
     @trigger.command(name="set", pass_context=True)
     @checks.admin_or_permissions(administrator=True)
-    async def _set(self, ctx, trigger_name : str, setting : str, *, value : str):
+    async def _set(self, ctx, trigger_name : str, setting : str, *,
+                   value : str=None):
         """Edits the settings of each trigger
 
         Settings:
@@ -214,6 +217,7 @@ class Trigger:
         cooldown <seconds>
         phrase <word(s) that triggers it>
         response <all or random>
+        casesensitive
 
         Owner only:
         influence <global or local>
@@ -228,6 +232,8 @@ class Trigger:
             await self.bot.say("You're not authorized to edit that triggers' "
                                "settings.")
         except InvalidSettings:
+            await self.bot.say("Invalid settings.")
+        except:
             await self.bot.say("Invalid settings.")
         else:
             self.save_triggers()
@@ -287,9 +293,6 @@ class Trigger:
         else:
             raise NotFound()
 
-    def can_be_triggered(self, trigger, server):
-        return trigger.server == server.id or trigger.server is None
-
     def elaborate_payload(self, payload, truncate=50, escape=True):
         shortened = []
         for p in payload:
@@ -307,22 +310,24 @@ class Trigger:
         server = author.server
         trigger = self.get_trigger_by_name(trigger_name)
         setting = setting.lower()
-        value = value.lower() if not value.isdigit() else int(value)
         if trigger is None:
             raise NotFound()
         if not trigger.can_edit(author):
             raise Unauthorized
         if setting == "response":
+            value = value.lower()
             if value in ("all", "random"):
                 trigger.type = value
             else:
                 raise InvalidSettings()
         elif setting == "cooldown":
+            value = int(value)
             if not value < 1:
                 trigger.cooldown = value
             else:
                 raise InvalidSettings()
         elif setting == "influence":
+            value = value.lower()
             if author.id != settings.owner:
                 raise Unauthorized()
             if value in ("local", "global"):
@@ -333,11 +338,14 @@ class Trigger:
             else:
                 raise InvalidSettings()
         elif setting == "phrase":
+            assert value is not None
             value = str(value)
             if len(value) > 0:
                 trigger.triggered_by = value
             else:
                 raise InvalidSettings()
+        elif setting == "casesensitive":
+            trigger.case_sensitive = not trigger.case_sensitive
         else:
             raise InvalidSettings()
 
@@ -393,16 +401,15 @@ class Trigger:
             return "text", r
 
     async def on_message(self, message):
-        server = message.server
         channel = message.channel
         author = message.author
+        if message.server is None:
+            return
         if author == self.bot.user:
             return
         if self.is_command(message.content):
             return
         for trigger in self.triggers:
-            if not self.can_be_triggered(trigger, server):
-                continue
             if not trigger.check(message):
                 continue
             payload = trigger.payload()
@@ -412,6 +419,17 @@ class Trigger:
                     await self.bot.send_message(channel, resp)
                 elif resp_type == "file":
                     await self.bot.send_file(channel, resp)
+
+    async def save_stats(self):
+        """Saves triggers every 10 minutes to preserve stats"""
+        await self.bot.wait_until_ready()
+        try:
+            await asyncio.sleep(60)
+            while True:
+                self.save_triggers()
+                await asyncio.sleep(60 * 10)
+        except asyncio.CancelledError:
+            pass
 
     def load_triggers(self):
         triggers = dataIO.load_json("data/trigger/triggers.json")
@@ -423,7 +441,8 @@ class Trigger:
         dataIO.save_json("data/trigger/triggers.json", triggers)
 
     def __unload(self):
-        self.save_triggers() # Preserves stats
+        self.stats_task.cancel()
+        self.save_triggers()
 
 class TriggerObj:
     def __init__(self, **kwargs):
@@ -433,6 +452,7 @@ class TriggerObj:
         self.responses = kwargs.get("responses", [])
         self.server = kwargs.get("server") # if it's None, the trigger will be implicitly global
         self.type = kwargs.get("type", "all") # Type of payload. Types: all, random
+        self.case_sensitive = kwargs.get("case_sensitive", False)
         self.cooldown = kwargs.get("cooldown", 1) # Seconds
         self.triggered = kwargs.get("triggered", 0) # Counter
         self.last_triggered = datetime.datetime(1970, 2, 6) # Initialized
@@ -444,7 +464,13 @@ class TriggerObj:
 
     def check(self, msg):
         content = msg.content
-        if not self.triggered_by.lower() in content.lower():
+        triggered_by = self.triggered_by
+        if (self.server == msg.server.id or self.server is None) is False:
+            return False
+        if not self.case_sensitive:
+            triggered_by = triggered_by.lower()
+            content = content.lower()
+        if triggered_by not in content:
             return False
         timestamp = datetime.datetime.now()
         passed = (timestamp - self.last_triggered).seconds
@@ -455,7 +481,8 @@ class TriggerObj:
             return False
 
     def payload(self):
-        self.triggered += 1
+        if self.responses:
+            self.triggered += 1
         if self.type == "all":
             return self.responses
         elif self.type == "random":
