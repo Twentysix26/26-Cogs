@@ -98,7 +98,7 @@ class Trigger:
             trigger.responses.append(response)
             await self.bot.say("Response added.")
         else: # Interactive mode
-            await self.interactive_add_mode(self, trigger, ctx)
+            await self.interactive_add_mode(trigger, ctx)
         self.save_triggers()
 
     @trigger.command(pass_context=True)
