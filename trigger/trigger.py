@@ -88,7 +88,7 @@ class Trigger:
         trigger = self.get_trigger_by_name(trigger_name)
 
         if trigger is None:
-            await self.bot.say("You don't own that trigger.")
+            await self.bot.say("That trigger doesn't exist.")
             return
         if not trigger.can_edit(author):
             await self.bot.say("You're not allowed to edit that trigger.")
