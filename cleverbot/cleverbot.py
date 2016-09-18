@@ -5,7 +5,7 @@ except:
 from discord.ext import commands
 from cogs.utils import checks
 from .utils.dataIO import dataIO
-from __main__ import send_cmd_help
+from __main__ import send_cmd_help, user_allowed
 import os
 import discord
 import asyncio
@@ -44,6 +44,9 @@ class Cleverbot():
 
     async def on_message(self, message):
         if not self.settings["TOGGLE"] or message.channel.is_private:
+            return
+
+        if not user_allowed(message):
             return
 
         if message.author.id != self.bot.user.id:
