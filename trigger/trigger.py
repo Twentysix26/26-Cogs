@@ -3,7 +3,7 @@ import datetime
 import os
 import asyncio
 from discord.ext import commands
-from __main__ import send_cmd_help
+from __main__ import send_cmd_help, user_allowed
 from cogs.utils import checks
 from cogs.utils.dataIO import dataIO
 from cogs.utils.chat_formatting import box, pagify, escape_mass_mentions
@@ -403,12 +403,19 @@ class Trigger:
     async def on_message(self, message):
         channel = message.channel
         author = message.author
+
         if message.server is None:
             return
+
         if author == self.bot.user:
             return
+
+        if not user_allowed(message):
+            return
+
         if self.is_command(message.content):
             return
+
         for trigger in self.triggers:
             if not trigger.check(message):
                 continue
