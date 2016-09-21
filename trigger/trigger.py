@@ -107,6 +107,7 @@ class Trigger:
         """Lets you choose a response to remove"""
         author = ctx.message.author
         trigger = self.get_trigger_by_name(trigger_name)
+
         if trigger is None:
             await self.bot.say("That trigger doesn't exist.")
             return
@@ -116,29 +117,48 @@ class Trigger:
         if not trigger.can_edit(author):
             await self.bot.say("You're not allowed to do that.")
             return
+
         msg = None
         current_list = None
+        past_messages = []
+        quit_msg = "\nType 'exit' to quit removal mode."
+
         while self.get_n_trigger_responses(trigger) is not None:
             r_list = self.get_n_trigger_responses(trigger, truncate=100)
-            if r_list is None:
-                await self.bot.say("No more responses to delete.")
-                return
             if current_list is None:
-                current_list = await self.bot.say(r_list)
+                current_list = await self.bot.say(r_list + quit_msg)
             else:
                 if r_list != current_list.content:
-                    await self.bot.edit_message(current_list, r_list)
+                    await self.bot.edit_message(current_list, r_list + quit_msg)
             msg = await self.bot.wait_for_message(author=author, timeout=15)
             if msg is None:
-                await self.bot.say("Nothing to remove I guess.")
-                return
+                await self.bot.say("Nothing else to remove I guess.")
+                break
+            elif msg.content.lower().strip() == "exit":
+                past_messages.append(msg)
+                await self.bot.say("Removal mode quit.")
+                break
             try:
                 i = int(msg.content)
                 del trigger.responses[i]
             except:
                 pass
-        if current_list:
-            await self.bot.edit_message(current_list, "No more responses to delete.")
+            past_messages.append(msg)
+
+        if not trigger.responses:
+            await self.bot.say("No more responses to delete.")
+
+        past_messages.append(current_list)
+        await self.attempt_cleanup(past_messages)
+
+    async def attempt_cleanup(self, messages):
+        try:
+            if len(messages) > 1:
+                await self.bot.delete_messages(messages)
+            else:
+                await self.bot.delete_message(messages[0])
+        except:
+            pass
 
     @trigger.command(pass_context=True)
     async def info(self, ctx, trigger_name : str):
@@ -360,7 +380,7 @@ class Trigger:
                 await self.bot.say("No more responses then. "
                                    "Your changes have been saved.")
                 break
-            if msg.content.lower() == "exit":
+            if msg.content.lower().strip() == "exit":
                 await self.bot.say("Your changes have been saved.")
                 break
             trigger.responses.append(msg.content)
