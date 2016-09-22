@@ -317,7 +317,10 @@ class Trigger:
         shortened = []
         for p in payload:
             if escape:
-                p = p.replace("`", "\\`").replace("*", "\\*").replace("_", "\\_")
+                p = (p.replace("`", "\\`")
+                      .replace("*", "\\*")
+                      .replace("_", "\\_")
+                      .replace("~", "\\~"))
                 p = escape_mass_mentions(p)
             if len(p) < truncate:
                 shortened.append(p)
