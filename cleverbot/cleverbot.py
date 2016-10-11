@@ -25,6 +25,7 @@ class Cleverbot():
         await self.bot.say(result)
 
     @cleverbot.command()
+    @checks.is_owner()
     async def toggle(self):
         """Toggles reply on mention"""
         self.settings["TOGGLE"] = not self.settings["TOGGLE"]
