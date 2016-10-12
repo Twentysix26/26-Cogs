@@ -2,6 +2,7 @@ import discord
 import datetime
 import os
 import asyncio
+import re
 from discord.ext import commands
 from __main__ import send_cmd_help, user_allowed
 from cogs.utils import checks
@@ -238,6 +239,7 @@ class Trigger:
         phrase <word(s) that triggers it>
         response <all or random>
         casesensitive
+        regex
 
         Owner only:
         influence <global or local>
@@ -369,6 +371,8 @@ class Trigger:
                 raise InvalidSettings()
         elif setting == "casesensitive":
             trigger.case_sensitive = not trigger.case_sensitive
+        elif setting == "regex":
+            trigger.regex = not trigger.regex
         else:
             raise InvalidSettings()
 
@@ -483,6 +487,7 @@ class TriggerObj:
         self.server = kwargs.get("server") # if it's None, the trigger will be implicitly global
         self.type = kwargs.get("type", "all") # Type of payload. Types: all, random
         self.case_sensitive = kwargs.get("case_sensitive", False)
+        self.regex = kwargs.get("regex", False)
         self.cooldown = kwargs.get("cooldown", 1) # Seconds
         self.triggered = kwargs.get("triggered", 0) # Counter
         self.last_triggered = datetime.datetime(1970, 2, 6) # Initialized
@@ -500,8 +505,13 @@ class TriggerObj:
         if not self.case_sensitive:
             triggered_by = triggered_by.lower()
             content = content.lower()
-        if triggered_by not in content:
-            return False
+        if not self.regex:
+            if triggered_by not in content:
+                return False
+        else:
+            found = re.search(triggered_by, content)
+            if not found:
+                return False
         timestamp = datetime.datetime.now()
         passed = (timestamp - self.last_triggered).seconds
         if passed > self.cooldown:
