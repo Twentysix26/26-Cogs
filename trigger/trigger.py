@@ -176,6 +176,8 @@ class Trigger:
             msg += "Influence: {}\n".format(influence)
             cs = "yes" if trigger.case_sensitive else "no"
             msg += "Case Sensitive: {}\n".format(cs)
+            regex = "yes" if trigger.regex else "no"
+            msg += "Regex: {}\n".format(regex)
             msg += "Cooldown: {} seconds\n".format(trigger.cooldown)
             msg += "Triggered By: \"{}\"\n".format(trigger.triggered_by.replace("`", "\\`"))
             msg += "Payload: {} responses\n".format(len(trigger.responses))
