@@ -542,16 +542,10 @@ class TriggerObj:
         is_admin = discord.utils.get(user.roles, name=admin_role) is not None
         is_trigger_owner = user.id == self.owner
         trigger_is_global = self.server is None
-        if trigger_is_global:
-            if is_trigger_owner or is_owner:
-                return True
-            else:
-                return False
+        if is_trigger_owner or is_owner:
+            return True
         else:
-            if is_admin or is_trigger_owner:
-                return True
-            else:
-                return False
+            return is_admin and not trigger_is_global
 
 def check_folders():
     paths = ("data/trigger", "data/trigger/files")
