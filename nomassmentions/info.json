@@ -1,0 +1,8 @@
+{
+    "AUTHOR" : "Twentysix",
+    "SHORT" : "Silences outcoming mass mentions",
+    "DESCRIPTION" : "Makes sure that any mass mention that is about to be sent from Red is silenced",
+    "DISABLED" : false,
+    "NAME" : "NoMassMentions",
+    "INSTALL_MSG" : "This cog is commandless. There is nothing to set up. As long as it is loaded it will silence any outcoming mass mention."
+}
