@@ -1,0 +1,8 @@
+{
+    "AUTHOR" : "Twentysix",
+    "SHORT" : "Allows cross server communication through Red",
+    "DESCRIPTION" : "Communicate with other servers through Red! Works in DMs too.",
+    "DISABLED" : false,
+    "NAME" : "Rift",
+    "INSTALL_MSG" : "`[p]riftopen` to use it. Remember to type only the channel name. Have fun!"
+}
