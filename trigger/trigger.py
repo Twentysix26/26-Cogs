@@ -4,32 +4,33 @@ import os
 import asyncio
 import re
 from discord.ext import commands
-from __main__ import send_cmd_help, user_allowed
 from cogs.utils import checks
 from cogs.utils.dataIO import dataIO
 from cogs.utils.chat_formatting import box, pagify, escape_mass_mentions
 from random import choice
-from copy import deepcopy
-from cogs.utils.settings import Settings
 
 __author__ = "Twentysix"
 
-settings = Settings()
 
 class TriggerError(Exception):
     pass
 
+
 class Unauthorized(TriggerError):
     pass
+
 
 class NotFound(TriggerError):
     pass
 
+
 class AlreadyExists(TriggerError):
     pass
 
+
 class InvalidSettings(TriggerError):
     pass
+
 
 class Trigger:
     """Custom triggers"""
@@ -44,7 +45,7 @@ class Trigger:
     async def trigger(self, ctx):
         """Trigger creation commands"""
         if ctx.invoked_subcommand is None:
-            await send_cmd_help(ctx)
+            await self.bot.send_cmd_help(ctx)
 
     @trigger.command(pass_context=True)
     @checks.admin_or_permissions(administrator=True)
@@ -59,7 +60,7 @@ class Trigger:
             await self.bot.say("Trigger created. Entering interactive "
                                "add mode...".format(ctx.prefix))
             trigger = self.get_trigger_by_name(trigger_name)
-            wait = await self.interactive_add_mode(trigger, ctx)
+            await self.interactive_add_mode(trigger, ctx)
             self.save_triggers()
 
     @trigger.command(pass_context=True)
@@ -298,7 +299,8 @@ class Trigger:
         trigger = self.get_trigger_by_name(name)
         if not trigger:
             author = ctx.message.author
-            trigger = TriggerObj(name=name,
+            trigger = TriggerObj(bot=self.bot,
+                                 name=name,
                                  triggered_by=triggered_by,
                                  owner=author.id,
                                  server=author.server.id
@@ -355,7 +357,7 @@ class Trigger:
                 raise InvalidSettings()
         elif setting == "influence":
             value = value.lower()
-            if author.id != settings.owner:
+            if author.id != self.bot.settings.owner:
                 raise Unauthorized()
             if value in ("local", "global"):
                 if value == "local":
@@ -416,7 +418,7 @@ class Trigger:
         return False
 
     def elaborate_response(self, trigger, r):
-        if trigger.owner != settings.owner:
+        if trigger.owner != self.bot.settings.owner:
             return "text", r
         if not r.startswith("file:"):
             return "text", r
@@ -439,7 +441,7 @@ class Trigger:
         if author == self.bot.user:
             return
 
-        if not user_allowed(message):
+        if not self.bot.user_allowed(message):
             return
 
         if self.is_command(message.content):
@@ -470,6 +472,7 @@ class Trigger:
     def load_triggers(self):
         triggers = dataIO.load_json("data/trigger/triggers.json")
         for trigger in triggers:
+            trigger["bot"] = self.bot
             self.triggers.append(TriggerObj(**trigger))
 
     def save_triggers(self):
@@ -480,8 +483,10 @@ class Trigger:
         self.stats_task.cancel()
         self.save_triggers()
 
+
 class TriggerObj:
     def __init__(self, **kwargs):
+        self.bot = kwargs.get("bot")
         self.name = kwargs.get("name")
         self.owner = kwargs.get("owner")
         self.triggered_by = kwargs.get("triggered_by")
@@ -495,7 +500,8 @@ class TriggerObj:
         self.last_triggered = datetime.datetime(1970, 2, 6) # Initialized
 
     def export(self):
-        data = deepcopy(self.__dict__)
+        data = self.__dict__.copy()
+        del data["bot"]
         del data["last_triggered"]
         return data
 
@@ -537,21 +543,16 @@ class TriggerObj:
 
     def can_edit(self, user):
         server = user.server
-        admin_role = settings.get_server_admin(server)
-        is_owner = user.id == settings.owner
+        admin_role = self.bot.settings.get_server_admin(server)
+        is_owner = user.id == self.bot.settings.owner
         is_admin = discord.utils.get(user.roles, name=admin_role) is not None
         is_trigger_owner = user.id == self.owner
         trigger_is_global = self.server is None
         if trigger_is_global:
-            if is_trigger_owner or is_owner:
-                return True
-            else:
-                return False
+            return is_trigger_owner or is_owner
         else:
-            if is_admin or is_trigger_owner:
-                return True
-            else:
-                return False
+            return is_trigger_owner or is_owner or is_admin
+
 
 def check_folders():
     paths = ("data/trigger", "data/trigger/files")
@@ -560,11 +561,13 @@ def check_folders():
             print("Creating {} folder...".format(path))
             os.makedirs(path)
 
+
 def check_files():
     f = "data/trigger/triggers.json"
     if not dataIO.is_valid_json(f):
         print("Creating empty triggers.json...")
         dataIO.save_json(f, [])
+
 
 def setup(bot):
     check_folders()
