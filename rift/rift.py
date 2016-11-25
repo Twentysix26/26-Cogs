@@ -67,7 +67,10 @@ class Rift:
             msg = await self.bot.wait_for_message(author=author,
                                                   channel=author_channel)
             if msg is not None and msg.content.lower() != "exit":
-                await self.bot.send_message(channel, msg.content)
+                try:
+                    await self.bot.send_message(channel, msg.content)
+                except:
+                    await self.bot.say("Couldn't send your message.")
             else:
                 break
         del self.open_rifts[author]
