@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from collections import namedtuple
-from cogs.utils.chat_formatting import escape
+from cogs.utils.chat_formatting import escape, pagify
 
 # Commission made for ScarletRaven, who decided to make it public
 # for everyone to enjoy 👍
@@ -20,7 +20,7 @@ class Rift:
     async def riftopen(self, ctx, channel):
         """Makes you able to communicate with other channels through Red
 
-        This is cross-server. Type only the channel name."""
+        This is cross-server. Type only the channel name or the ID."""
         author = ctx.message.author
         author_channel = ctx.message.channel
 
@@ -31,8 +31,10 @@ class Rift:
                 return False
 
         channels = self.bot.get_all_channels()
-        channels = [c for c in channels if c.name.lower() == channel
-                    and c.type == discord.ChannelType.text]
+        channels = [c for c in channels
+                    if c.name.lower() == channel or c.id == channel]
+        channels = [c for c in channels if c.type == discord.ChannelType.text]
+
 
         if not channels:
             await self.bot.say("No channels found. Remember to type just "
@@ -43,7 +45,8 @@ class Rift:
             msg = "Multiple results found.\nChoose a server:\n"
             for i, channel in enumerate(channels):
                 msg += "{} - {} ({})\n".format(i, channel.server, channel.id)
-            await self.bot.say(msg)
+            for page in pagify(msg):
+                await self.bot.say(page)
             choice = await self.bot.wait_for_message(author=author,
                                                      timeout=30,
                                                      check=check,
