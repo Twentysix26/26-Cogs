@@ -28,10 +28,6 @@ class AlreadyExists(TriggerError):
     pass
 
 
-class InvalidSettings(TriggerError):
-    pass
-
-
 class Trigger:
     """Custom triggers"""
 
@@ -229,41 +225,6 @@ class Trigger:
         else:
             await self.bot.say("I couldn't find any trigger of that type.")
 
-
-    @trigger.command(name="set", pass_context=True)
-    @checks.admin_or_permissions(administrator=True)
-    async def _set(self, ctx, trigger_name : str, setting : str, *,
-                   value : str=None):
-        """Edits the settings of each trigger
-
-        Settings:
-
-        cooldown <seconds>
-        phrase <word(s) that triggers it>
-        response <all or random>
-        casesensitive
-        regex
-
-        Owner only:
-        influence <global or local>
-
-        Response set to 'all' outputs all responses
-        Response set to 'random' outputs one at random"""
-        try:
-            self.change_trigger_settings(ctx, trigger_name, setting, value)
-        except NotFound:
-            await self.bot.say("That trigger doesn't exist.")
-        except Unauthorized:
-            await self.bot.say("You're not authorized to edit that triggers' "
-                               "settings.")
-        except InvalidSettings:
-            await self.bot.say("Invalid settings.")
-        except:
-            await self.bot.say("Invalid settings.")
-        else:
-            self.save_triggers()
-            await self.bot.say("Trigger successfully modified.")
-
     @trigger.command(pass_context=True)
     async def search(self, ctx, *, search_terms : str):
         """Returns triggers matching the search terms"""
@@ -273,6 +234,131 @@ class Trigger:
             await self.bot.say("Triggers found:\n\n{}".format(result))
         else:
             await self.bot.say("No triggers matching your search.")
+
+    @commands.group(pass_context=True)
+    @checks.admin_or_permissions(administrator=True)
+    async def triggerset(self, ctx):
+        """Edits the settings of a trigger"""
+        if ctx.invoked_subcommand is None:
+            await self.bot.send_cmd_help(ctx)
+
+    @triggerset.command(pass_context=True)
+    async def cooldown(self, ctx, trigger_name : str, seconds : int):
+        """Sets the trigger's cooldown"""
+        author = ctx.message.author
+        trigger = self.get_trigger_by_name(trigger_name)
+        if not await self.settings_check(trigger, author):
+            return
+        if seconds < 1:
+            seconds = 1
+        trigger.cooldown = seconds
+        self.save_triggers()
+        await self.bot.say("Cooldown set to {} seconds.".format(seconds))
+
+    @triggerset.command(pass_context=True)
+    async def phrase(self, ctx, trigger_name : str, triggered_by : str):
+        """Sets the word/phrase by which the trigger is activated by"""
+        author = ctx.message.author
+        trigger = self.get_trigger_by_name(trigger_name)
+        if not await self.settings_check(trigger, author):
+            return
+        if not triggered_by:
+            await self.bot.say("Invalid setting.")
+            return
+        trigger.triggered_by = triggered_by
+        self.save_triggers()
+        await self.bot.say("The trigger will be activated by `{}`."
+                           "".format(triggered_by))
+
+    @triggerset.command(pass_context=True)
+    async def response(self, ctx, trigger_name : str, _type : str):
+        """Sets the response type for the trigger.
+
+        Available types: all, random
+
+        All will show all responses in order
+        Random will pick one at random"""
+        author = ctx.message.author
+        trigger = self.get_trigger_by_name(trigger_name)
+        if not await self.settings_check(trigger, author):
+            return
+        _type = _type.lower()
+        if _type not in ("all", "random"):
+            await self.bot.say("Invalid type.")
+            return
+        trigger.type = _type
+        self.save_triggers()
+        await self.bot.say("Response type set to {}.".format(_type))
+
+    @triggerset.command(pass_context=True)
+    @checks.is_owner()
+    async def influence(self, ctx, trigger_name : str, _type : str):
+        """Sets the influence of the trigger.
+
+        Available types: server, global"""
+        author = ctx.message.author
+        server = author.server
+        trigger = self.get_trigger_by_name(trigger_name)
+        if not await self.settings_check(trigger, author):
+            return
+        _type = _type.lower()
+        if _type not in ("server", "global"):
+            await self.bot.say("Invalid type.")
+            return
+        trigger.server = server.id if _type == "server" else None
+        self.save_triggers()
+        await self.bot.say("Influence set to {}.".format(_type))
+
+    @triggerset.command(pass_context=True)
+    async def casesensitive(self, ctx, trigger_name : str,
+                            true_or_false : bool):
+        """Toggles the trigger's case sensitivity.
+
+        Can be true or false"""
+        author = ctx.message.author
+        trigger = self.get_trigger_by_name(trigger_name)
+        if not await self.settings_check(trigger, author):
+            return
+        trigger.case_sensitive = true_or_false
+        self.save_triggers()
+        await self.bot.say("Case sensitivity set to {}.".format(true_or_false))
+
+    @triggerset.command(pass_context=True)
+    async def regex(self, ctx, trigger_name : str, true_or_false : bool):
+        """Toggles the trigger's case capabilities.
+
+        Can be true or false"""
+        author = ctx.message.author
+        trigger = self.get_trigger_by_name(trigger_name)
+        if not await self.settings_check(trigger, author):
+            return
+        trigger.regex = true_or_false
+        self.save_triggers()
+        await self.bot.say("Regex set to {}.".format(true_or_false))
+
+    @triggerset.command(pass_context=True)
+    async def active(self, ctx, trigger_name : str, true_or_false : bool):
+        """Toggles the trigger on/off.
+
+        Can be true or false"""
+        author = ctx.message.author
+        trigger = self.get_trigger_by_name(trigger_name)
+        if not await self.settings_check(trigger, author):
+            return
+        trigger.active = true_or_false
+        self.save_triggers()
+        await self.bot.say("Trigger active: {}.".format(true_or_false))
+
+    async def settings_check(self, trigger, author):
+        if not trigger:
+            await self.bot.say("That trigger doesn't exist.")
+            return False
+        elif not trigger.can_edit(author):
+            await self.bot.say("You're not authorized to edit that triggers' "
+                               "settings.")
+            return False
+        else:
+            return True
 
     def get_trigger_by_name(self, name):
         for trigger in self.triggers:
@@ -334,52 +420,6 @@ class Trigger:
                 shortened.append(p[:truncate] + "...")
         return shortened
 
-    def change_trigger_settings(self, ctx, trigger_name, setting, value):
-        author = ctx.message.author
-        server = author.server
-        trigger = self.get_trigger_by_name(trigger_name)
-        setting = setting.lower()
-        if trigger is None:
-            raise NotFound()
-        if not trigger.can_edit(author):
-            raise Unauthorized
-        if setting == "response":
-            value = value.lower()
-            if value in ("all", "random"):
-                trigger.type = value
-            else:
-                raise InvalidSettings()
-        elif setting == "cooldown":
-            value = int(value)
-            if not value < 1:
-                trigger.cooldown = value
-            else:
-                raise InvalidSettings()
-        elif setting == "influence":
-            value = value.lower()
-            if author.id != self.bot.settings.owner:
-                raise Unauthorized()
-            if value in ("local", "global"):
-                if value == "local":
-                    trigger.server = server.id
-                else:
-                    trigger.server = None
-            else:
-                raise InvalidSettings()
-        elif setting == "phrase":
-            assert value is not None
-            value = str(value)
-            if len(value) > 0:
-                trigger.triggered_by = value
-            else:
-                raise InvalidSettings()
-        elif setting == "casesensitive":
-            trigger.case_sensitive = not trigger.case_sensitive
-        elif setting == "regex":
-            trigger.regex = not trigger.regex
-        else:
-            raise InvalidSettings()
-
     async def interactive_add_mode(self, trigger, ctx):
         author = ctx.message.author
         msg = ""
@@ -412,8 +452,12 @@ class Trigger:
             return None
 
     def is_command(self, msg):
-        for p in self.bot.command_prefix:
-            if msg.startswith(p):
+        if callable(self.bot.command_prefix):
+            prefixes = self.bot.command_prefix(self.bot, msg)
+        else:
+            prefixes = self.bot.command_prefix
+        for p in prefixes:
+            if msg.content.startswith(p):
                 return True
         return False
 
@@ -444,7 +488,7 @@ class Trigger:
         if not self.bot.user_allowed(message):
             return
 
-        if self.is_command(message.content):
+        if self.is_command(message):
             return
 
         for trigger in self.triggers:
@@ -498,6 +542,7 @@ class TriggerObj:
         self.cooldown = kwargs.get("cooldown", 1) # Seconds
         self.triggered = kwargs.get("triggered", 0) # Counter
         self.last_triggered = datetime.datetime(1970, 2, 6) # Initialized
+        self.active = kwargs.get("active", True)
 
     def export(self):
         data = self.__dict__.copy()
@@ -506,6 +551,8 @@ class TriggerObj:
         return data
 
     def check(self, msg):
+        if not self.active:
+            return False
         content = msg.content
         triggered_by = self.triggered_by
         if (self.server == msg.server.id or self.server is None) is False:
