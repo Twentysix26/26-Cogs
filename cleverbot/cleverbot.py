@@ -1,7 +1,9 @@
 try:
-    from cleverbot import Cleverbot as Clv
+    import cleverbot as clv
+    # A terrible fix for a broken wrapper
+    clv.Cleverbot.API_URL = "http://www.cleverbot.com/webservicemin?uc=321&"
 except:
-    Clv = False
+    clv = False
 from discord.ext import commands
 from cogs.utils import checks
 from .utils.dataIO import dataIO
@@ -15,7 +17,7 @@ class Cleverbot():
 
     def __init__(self, bot):
         self.bot = bot
-        self.clv = Clv()
+        self.clv = clv.Cleverbot()
         self.settings = dataIO.load_json("data/cleverbot/settings.json")
 
     @commands.group(no_pm=True, invoke_without_command=True)
@@ -70,7 +72,7 @@ def check_files():
         dataIO.save_json(f, data)
 
 def setup(bot):
-    if Clv is False:
+    if clv is False:
         raise RuntimeError("You're missing the cleverbot library.\n"
                            "Install it with: 'pip3 install cleverbot' "
                            "and reload the module.")
