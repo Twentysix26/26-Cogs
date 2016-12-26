@@ -256,7 +256,7 @@ class Trigger:
         await self.bot.say("Cooldown set to {} seconds.".format(seconds))
 
     @triggerset.command(pass_context=True)
-    async def phrase(self, ctx, trigger_name : str, triggered_by : str):
+    async def phrase(self, ctx, trigger_name : str, *, triggered_by : str):
         """Sets the word/phrase by which the trigger is activated by"""
         author = ctx.message.author
         trigger = self.get_trigger_by_name(trigger_name)
