@@ -1,0 +1,8 @@
+{
+    "AUTHOR" : "Airen and JennJenn",
+    "SHORT" : "Insult people in a creative way",
+    "DESCRIPTION" : "Insult people in a creative way",
+    "DISABLED" : false,
+    "NAME" : "Insult",
+    "INSTALL_MSG" : "Usage: `[p]insult <user>`"
+}
