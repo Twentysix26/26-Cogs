@@ -1,0 +1,6 @@
+{
+    "AUTHOR" : "Twentysix",
+    "DESCRIPTION" : "Cycles custom statuses every X seconds.\nLimited to owner.\nSee [prefix]help RandomStatus for details.",
+    "SHORT" : "Cycles custom game statuses",
+    "NAME" : "RandomStatus"
+}
