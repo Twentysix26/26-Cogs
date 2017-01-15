@@ -13,8 +13,10 @@ class Penis:
         """Detects user's penis length
 
         This is 100% accurate."""
+        state = random.getstate()
         random.seed(user.id)
         dong = "8{}D".format("=" * random.randint(0, 30))
+        random.setstate(state)
         await self.bot.say("Size: " + dong)
 
 
