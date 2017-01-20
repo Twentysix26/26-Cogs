@@ -1,13 +1,12 @@
 try:
-    import cleverbot as clv
-    # A terrible fix for a broken wrapper
-    clv.Cleverbot.API_URL = "http://www.cleverbot.com/webservicemin?uc=321&"
+    from cleverbot import Cleverbot as _Cleverbot
+    if 'API_URL' in _Cleverbot.__dict__:
+        _Cleverbot = False
 except:
-    clv = False
+    _Cleverbot = False
 from discord.ext import commands
 from cogs.utils import checks
 from .utils.dataIO import dataIO
-from __main__ import send_cmd_help, user_allowed
 import os
 import discord
 import asyncio
@@ -17,7 +16,7 @@ class Cleverbot():
 
     def __init__(self, bot):
         self.bot = bot
-        self.clv = clv.Cleverbot()
+        self.clv = _Cleverbot('Red-DiscordBot')
         self.settings = dataIO.load_json("data/cleverbot/settings.json")
 
     @commands.group(no_pm=True, invoke_without_command=True)
@@ -49,7 +48,7 @@ class Cleverbot():
         if not self.settings["TOGGLE"] or message.channel.is_private:
             return
 
-        if not user_allowed(message):
+        if not self.bot.user_allowed(message):
             return
 
         if message.author.id != self.bot.user.id:
@@ -72,10 +71,12 @@ def check_files():
         dataIO.save_json(f, data)
 
 def setup(bot):
-    if clv is False:
-        raise RuntimeError("You're missing the cleverbot library.\n"
-                           "Install it with: 'pip3 install cleverbot' "
-                           "and reload the module.")
+    if _Cleverbot is False:
+        raise RuntimeError("Your cleverbot library is either missing or not "
+                           "up to date. Please do\n"
+                           "[p]debug bot.pip_install('cleverbot')\n"
+                           "and restart Red once you get a response.\n"
+                           "Then [p]load cleverbot")
     check_folders()
     check_files()
     n = Cleverbot(bot)
