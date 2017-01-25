@@ -3,5 +3,6 @@
     "DESCRIPTION" : "Sends you the message you want when the time is up.\nSee [p]help RemindMe\nExample: [p]remindme 3 days Have sushi with Asu and JennJenn",
     "SHORT" : "Never forget anything anymore",
     "DISABLED" : false,
-    "NAME" : "RemindMe"
+    "NAME" : "RemindMe",
+    "TAGS" : ["reminder", "memo"]
 }

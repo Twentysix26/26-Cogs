@@ -4,5 +4,6 @@
     "DESCRIPTION" : "Insult people in a creative way",
     "DISABLED" : false,
     "NAME" : "Insult",
+    "TAGS" : ["insults", "fun"],
     "INSTALL_MSG" : "Usage: `[p]insult <user>`"
 }
