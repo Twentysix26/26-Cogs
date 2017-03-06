@@ -1,0 +1,8 @@
+{
+    "AUTHOR" : "Twentysix",
+    "SHORT" : "Reapplies specific roles on join",
+    "DESCRIPTION" : "With this cog you can specify which roles you want to be reapplied on join. This is particularly useful to fight \"role evasion\".",
+    "NAME" : "StickyRoles",
+    "TAGS" : ["roles", "utility", "tools", "moderation"],
+    "INSTALL_MSG" : "The command group is `[p]stickyroles`. Remember that role names are case sensitive. If a user with the roles you specified with `[p]stickyroles add` leaves the server and comes back those roles will be reapplied to them. Make sure that Red has appropriate permissions."
+}
