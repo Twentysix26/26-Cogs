@@ -311,7 +311,9 @@ class Trigger:
 
     @triggerset.command(pass_context=True)
     async def channels(self, ctx, trigger_name : str, *channels : discord.Channel):
-        """Sets the channel(s) in which the trigger will be active"""
+        """Sets the channel(s) in which the trigger will be active
+        
+        Not entering any channel will revert the trigger to server-wide"""
         author = ctx.message.author
         server = author.server
         trigger = self.get_trigger_by_name(trigger_name)
@@ -328,7 +330,9 @@ class Trigger:
                 await self.bot.say("In this server the trigger will be "
                                    "enabled only on those channels")
         else:
-            await self.bot.send_cmd_help(ctx)
+            trigger.channels[server.id] = []
+            self.save_triggers()
+            await self.bot.say("The trigger will be active in all channels.")
 
     @triggerset.command(pass_context=True)
     async def casesensitive(self, ctx, trigger_name : str,
