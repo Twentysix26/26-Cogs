@@ -310,6 +310,27 @@ class Trigger:
         await self.bot.say("Influence set to {}.".format(_type))
 
     @triggerset.command(pass_context=True)
+    async def channels(self, ctx, trigger_name : str, *channels : discord.Channel):
+        """Sets the channel(s) in which the trigger will be active"""
+        author = ctx.message.author
+        server = author.server
+        trigger = self.get_trigger_by_name(trigger_name)
+        if not await self.settings_check(trigger, author):
+            return
+        if channels:
+            channels = [c.id for c in channels]
+            trigger.channels[server.id] = list(channels)
+            self.save_triggers()
+            if trigger.server is not None:
+                await self.bot.say("The trigger will be enabled only on "
+                                   "those channels.")
+            else:
+                await self.bot.say("In this server the trigger will be "
+                                   "enabled only on those channels")
+        else:
+            await self.bot.send_cmd_help(ctx)
+
+    @triggerset.command(pass_context=True)
     async def casesensitive(self, ctx, trigger_name : str,
                             true_or_false : bool):
         """Toggles the trigger's case sensitivity.
@@ -536,6 +557,7 @@ class TriggerObj:
         self.triggered_by = kwargs.get("triggered_by")
         self.responses = kwargs.get("responses", [])
         self.server = kwargs.get("server") # if it's None, the trigger will be implicitly global
+        self.channels = kwargs.get("channels", {})
         self.type = kwargs.get("type", "all") # Type of payload. Types: all, random
         self.case_sensitive = kwargs.get("case_sensitive", False)
         self.regex = kwargs.get("regex", False)
@@ -553,13 +575,22 @@ class TriggerObj:
     def check(self, msg):
         if not self.active:
             return False
+
+        channels = self.channels.get(msg.server.id, [])
+        if channels:
+            if msg.channel.id not in channels:
+                return False
+
         content = msg.content
         triggered_by = self.triggered_by
+
         if (self.server == msg.server.id or self.server is None) is False:
             return False
+
         if not self.case_sensitive:
             triggered_by = triggered_by.lower()
             content = content.lower()
+
         if not self.regex:
             if triggered_by not in content:
                 return False
@@ -567,6 +598,7 @@ class TriggerObj:
             found = re.search(triggered_by, content)
             if not found:
                 return False
+
         timestamp = datetime.datetime.now()
         passed = (timestamp - self.last_triggered).seconds
         if passed > self.cooldown:
