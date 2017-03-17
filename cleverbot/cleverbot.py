@@ -1,4 +1,9 @@
-from cleverwrap import CleverWrap as _CleverWrap
+try:
+    from cleverwrap import CleverWrap as _CleverWrap
+    if 'API_URL' in _CleverWrap.__dict__:
+        _CleverWrap = False
+except:
+    _CleverWrap = False
 from discord.ext import commands
 from cogs.utils import checks
 from .utils.dataIO import dataIO
@@ -88,4 +93,5 @@ def setup(bot):
                            "Then [p]load cleverbot")
     check_folders()
     check_files()
-    bot.add_cog(Cleverbot(bot))
+    n = Cleverbot(bot)
+    bot.add_cog(n)
