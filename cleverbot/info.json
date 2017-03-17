@@ -1,7 +1,7 @@
 {
     "AUTHOR" : "Twentysix",
     "SHORT" : "Talk with Cleverbot!",
-    "DESCRIPTION" : "Allows for interaction with cleverbot.io through mention/command",
+    "DESCRIPTION" : "Allows for interaction with cleverbot.com through mention/command",
     "DISABLED" : false,
     "NAME" : "Cleverbot",
     "TAGS" : ["chatbot", "cleverbot", "conversation"],

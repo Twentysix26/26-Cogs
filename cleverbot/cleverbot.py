@@ -4,20 +4,25 @@ from .utils.dataIO import dataIO
 import os
 import aiohttp
 
-API = "https://cleverbot.io/1.0"
-API_CREATE = API + "/create"
-API_ASK    = API + "/ask"
+API_URL = "https://www.cleverbot.com/getreply"
 
 
 class CleverbotError(Exception):
     pass
 
-
 class NoCredentials(CleverbotError):
     pass
 
+class InvalidCredentials(CleverbotError):
+    pass
 
 class APIError(CleverbotError):
+    pass
+
+class OutOfRequests(CleverbotError):
+    pass
+
+class OutdatedCredentials(CleverbotError):
     pass
 
 
@@ -33,13 +38,24 @@ class Cleverbot():
     async def cleverbot(self, ctx, *, message):
         """Talk with cleverbot"""
         author = ctx.message.author
+        channel = ctx.message.channel
         try:
             result = await self.get_response(author, message)
         except NoCredentials:
-            await self.bot.say("The owner needs to set the credentials first.\n"
-                               "See: `{}cleverbot apikey`".format(ctx.prefix))
+            await self.bot.send_message(channel, "The owner needs to set the credentials first.\n"
+                                                 "See: `[p]cleverbot apikey`")
         except APIError:
-            await self.bot.say("Error contacting the API.")
+            await self.bot.send_message(channel, "Error contacting the API.")
+        except InvalidCredentials:
+            await self.bot.send_message(channel, "The token that has been set is not valid.\n"
+                                                 "See: `[p]cleverbot apikey`")
+        except OutOfRequests:
+            await self.bot.send_message(channel, "You have ran out of requests for this month. "
+                                                 "The free tier has a 5000 requests a month limit.")
+        except OutdatedCredentials:
+            await self.bot.send_message(channel, "You need a valid cleverbot.com api key for this to "
+                                                 "work. The old cleverbot.io service will soon be no "
+                                                 "longer active. See `[p]help cleverbot apikey`")
         else:
             await self.bot.say(result)
 
@@ -56,52 +72,44 @@ class Cleverbot():
 
     @cleverbot.command()
     @checks.is_owner()
-    async def apikey(self, user: str, key: str):
-        """Sets credentials to be used with cleverbot.io
+    async def apikey(self, key: str):
+        """Sets token to be used with cleverbot.com
 
-        You can get them from https://cleverbot.io/keys
+        You can get it from https://www.cleverbot.com/api/
         Use this command in direct message to keep your
-        credentials secret"""
-        self.settings["user"] = user
-        self.settings["key"] = key
+        token secret"""
+        self.settings["cleverbot_key"] = key
+        self.settings.pop("key", None)
+        self.settings.pop("user", None)
         dataIO.save_json("data/cleverbot/settings.json", self.settings)
         await self.bot.say("Credentials set.")
 
-    async def create_instance(self, author):
-        session = aiohttp.ClientSession()
-        payload = self.get_credentials()
-
-        async with session.post(API_CREATE, data=payload) as r:
-            if r.status != 200:
-                raise APIError()
-            data = await r.json()
-        await session.close()
-        if data["status"] == "success":  # because bools are too mainstream
-            self.instances[author.id] = data["nick"]
-            return data["nick"]
-        else:
-            raise APIError()
-
     async def get_response(self, author, text):
+        payload = {}
+        payload["key"] = self.get_credentials()
+        payload["cs"] = self.instances.get(author.id, "")
+        payload["input"] = text
         session = aiohttp.ClientSession()
-        payload = self.get_credentials()
-        payload["nick"] = self.instances.get(author.id,
-                                             await self.create_instance(author))
-        payload["text"] = text
-        async with session.post(API_ASK, data=payload) as r:
-            if r.status != 200:
+
+        async with session.get(API_URL, params=payload) as r:
+            if r.status == 200:
+                data = await r.json()
+                self.instances[author.id] = data["cs"] # Preserves conversation status
+            elif r.status == 401:
+                raise InvalidCredentials()
+            elif r.status == 503:
+                raise OutOfRequests()
+            else:
                 raise APIError()
-            data = await r.json()
         await session.close()
-        if data["status"] == "success":  # because bools are too mainstream
-            return data["response"]
-        else:
-            raise APIError()
+        return data["output"]
 
     def get_credentials(self):
+        if "cleverbot_key" not in self.settings:
+            if "key" in self.settings:
+                raise OutdatedCredentials() # old cleverbot.io credentials
         try:
-            return {'user': self.settings["user"],
-                    'key': self.settings["key"]}
+            return self.settings["cleverbot_key"]
         except KeyError:
             raise NoCredentials()
 
@@ -129,6 +137,16 @@ class Cleverbot():
                                                      "See: `[p]cleverbot apikey`")
             except APIError:
                 await self.bot.send_message(channel, "Error contacting the API.")
+            except InvalidCredentials:
+                await self.bot.send_message(channel, "The token that has been set is not valid.\n"
+                                                     "See: `[p]cleverbot apikey`")
+            except OutOfRequests:
+                await self.bot.send_message(channel, "You have ran out of requests for this month. "
+                                                     "The free tier has a 5000 requests a month limit.")
+            except OutdatedCredentials:
+                await self.bot.send_message(channel, "You need a valid cleverbot.com api key for this to "
+                                                     "work. The old cleverbot.io service will soon be no "
+                                                     "longer active. See `[p]help cleverbot apikey`")
             else:
                 await self.bot.send_message(channel, response)
 
