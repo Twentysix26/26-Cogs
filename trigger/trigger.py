@@ -37,7 +37,7 @@ class Trigger:
         self.load_triggers()
         self.stats_task = bot.loop.create_task(self.save_stats())
 
-    @commands.group(pass_context=True)
+    @commands.group(pass_context=True, no_dm=True)
     async def trigger(self, ctx):
         """Trigger creation commands"""
         if ctx.invoked_subcommand is None:
@@ -235,7 +235,7 @@ class Trigger:
         else:
             await self.bot.say("No triggers matching your search.")
 
-    @commands.group(pass_context=True)
+    @commands.group(pass_context=True, no_dm=True)
     @checks.admin_or_permissions(administrator=True)
     async def triggerset(self, ctx):
         """Edits the settings of a trigger"""
@@ -312,7 +312,7 @@ class Trigger:
     @triggerset.command(pass_context=True)
     async def channels(self, ctx, trigger_name : str, *channels : discord.Channel):
         """Sets the channel(s) in which the trigger will be active
-        
+
         Not entering any channel will revert the trigger to server-wide"""
         author = ctx.message.author
         server = author.server
