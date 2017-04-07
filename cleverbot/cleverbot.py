@@ -3,6 +3,7 @@ from cogs.utils import checks
 from .utils.dataIO import dataIO
 import os
 import aiohttp
+import json
 
 API_URL = "https://www.cleverbot.com/getreply"
 
@@ -93,7 +94,8 @@ class Cleverbot():
 
         async with session.get(API_URL, params=payload) as r:
             if r.status == 200:
-                data = await r.json()
+                data = await r.text()
+                data = json.loads(data, strict=False)
                 self.instances[author.id] = data["cs"] # Preserves conversation status
             elif r.status == 401:
                 raise InvalidCredentials()
