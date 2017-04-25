@@ -10,7 +10,7 @@ OpenRift = namedtuple("Rift", ["source", "destination"])
 
 
 class Rift:
-    """Communicate with others servers/channels!"""
+    """Communicate with other servers/channels!"""
 
     def __init__(self, bot):
         self.bot = bot
