@@ -507,9 +507,6 @@ class Trigger:
         if message.server is None:
             return
 
-        if author == self.bot.user:
-            return
-
         if not self.bot.user_allowed(message):
             return
 
