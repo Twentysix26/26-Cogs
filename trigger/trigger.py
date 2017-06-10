@@ -486,11 +486,11 @@ class Trigger:
                 return True
         return False
 
-    def elaborate_response(self, trigger, r):
+    def elaborate_response(self, trigger, r, groups):
         if trigger.owner != self.bot.settings.owner:
-            return "text", r
+            return "text", r.format(*groups)
         if not r.startswith("file:"):
-            return "text", r
+            return "text", r.format(*groups)
         else:
             path = r.replace("file:", "").strip()
         path = os.path.join("data", "trigger", "files", path)
@@ -498,7 +498,7 @@ class Trigger:
         if os.path.isfile(path):
             return "file", path
         else:
-            return "text", r
+            return "text", r.format(*groups)
 
     async def on_message(self, message):
         channel = message.channel
@@ -517,11 +517,13 @@ class Trigger:
             return
 
         for trigger in self.triggers:
-            if not trigger.check(message):
+            triggered, matchObj = trigger.check(message)
+            if not triggered:
                 continue
+            groups = matchObj.groups() if matchObj else tuple()
             payload = trigger.payload()
             for p in payload:
-                resp_type, resp = self.elaborate_response(trigger, p)
+                resp_type, resp = self.elaborate_response(trigger, p, groups)
                 if resp_type == "text":
                     await self.bot.send_message(channel, resp)
                 elif resp_type == "file":
@@ -583,33 +585,34 @@ class TriggerObj:
         channels = self.channels.get(msg.server.id, [])
         if channels:
             if msg.channel.id not in channels:
-                return False
+                return (False, None)
 
         content = msg.content
         triggered_by = self.triggered_by
 
         if (self.server == msg.server.id or self.server is None) is False:
-            return False
+            return (False, None)
 
         if not self.case_sensitive:
             triggered_by = triggered_by.lower()
             content = content.lower()
 
+        found = None
         if not self.regex:
             if triggered_by not in content:
-                return False
+                return (False, None)
         else:
             found = re.search(triggered_by, content)
             if not found:
-                return False
+                return (False, None)
 
         timestamp = datetime.datetime.now()
         passed = (timestamp - self.last_triggered).seconds
         if passed > self.cooldown:
             self.last_triggered = timestamp
-            return True
+            return (True, found)
         else:
-            return False
+            return (False, None)
 
     def payload(self):
         if self.responses:
