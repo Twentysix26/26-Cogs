@@ -224,6 +224,8 @@ class Trigger:
             if len(results) > 2000:
                 for page in pagify(results, delims=[" ", "\n"]):
                     await self.bot.say("```\n{}\n```".format(page.lstrip(" "), results))
+            else:
+                await self.bot.say("```\n{}\n```".format(results))
         else:
             await self.bot.say("I couldn't find any trigger of that type.")
 
