@@ -221,11 +221,11 @@ class Trigger:
             return
         if results:
             results = ", ".join([r.name for r in results])
-            if len(results) > 2000:
-                for page in pagify(results, delims=[" ", "\n"]):
-                    await self.bot.say("```\n{}\n```".format(page.lstrip(" "), results))
-            else:
-                await self.bot.say("```\n{}\n```".format(results))
+
+            for page in pagify(results, delims=[" ", "\n"]):
+                await self.bot.say("```\n{}\n```".format(page.lstrip(" "), results))
+
+
         else:
             await self.bot.say("I couldn't find any trigger of that type.")
 
