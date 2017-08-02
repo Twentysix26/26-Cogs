@@ -28,29 +28,5 @@ class Insult:
             await self.bot.say(ctx.message.author.mention + msg + randchoice(self.insults))
 
 
-def check_folders():
-    folders = ("data", "data/insult/")
-    for folder in folders:
-        if not os.path.exists(folder):
-            print("Creating " + folder + " folder...")
-            os.makedirs(folder)
-
-
-def check_files():
-    """Moves the file from cogs to the data directory. Important -> Also changes the name to insults.json"""
-    insults = {"You ugly as hell damn. Probably why most of your friends are online right?"}
-
-    if not os.path.isfile("data/insult/insults.json"):
-        if os.path.isfile("cogs/put_in_cogs_folder.json"):
-            print("moving default insults.json...")
-            os.rename("cogs/put_in_cogs_folder.json", "data/insult/insults.json")
-        else:
-            print("creating default insults.json...")
-            fileIO("data/insult/insults.json", "save", insults)
-
-
 def setup(bot):
-    check_folders()
-    check_files()
-    n = Insult(bot)
-    bot.add_cog(n)
+    bot.add_cog(Insult(bot))
