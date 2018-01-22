@@ -1,5 +1,6 @@
 import os
 from collections import namedtuple
+from random import randint
 
 import discord
 from discord.ext import commands
@@ -20,6 +21,17 @@ def closecheck(ctx):
         manage_channel=True)(ctx)
 
 
+def xbytes(b):
+    blist = ("B", "KB", "MB")
+    index = 0
+    while True:
+        if b > 900:
+            b = b / 1024.0
+            index += 1
+        else:
+            return "{:.3g} {}".format(b, blist[index])
+
+
 class Rift:
     """Communicate with other servers/channels!"""
 
@@ -34,26 +46,36 @@ class Rift:
         if ctx.invoked_subcommand is None:
             await send_cmd_help(ctx)
 
-    @rift.command(name="notify", pass_context=True)
-    @checks.is_owner()
+    @rift.command(name="notify", no_pm=True, pass_context=True)
+    @checks.admin_or_permissions(manage_channel=True)
     async def _rift_notify(self, ctx, *, notify: bool=None):
-        """Sets whether to notify destinations of opening/closing rifts.
+        """Sets whether to notify this server of opened rifts.
 
-        Note that the rift open notification is always sent to Direct Message
-        destinations, regardless of this setting."""
+        Opened rifts that have a channel in this server as a destination will
+        notify this server if this setting is set."""
+        server = ctx.message.server
+        cnotif = server.id not in self.settings["NOTIFY"]
         if notify is None:
-            await send_cmd_help(ctx)
-        elif notify != self.settings["NOTIFY"]:
-            self.settings["NOTIFY"] = notify
+            notify = not cnotif
+        if notify != cnotif:
+            if notify:
+                self.settings["NOTIFY"].remove(server.id)
+            else:
+                self.settings["NOTIFY"].append(server.id)
             dataIO.save_json("data/rift/settings.json", self.settings)
-        await self.bot.say("```notify: {}```".format(self.settings["NOTIFY"]))
+        if notify:
+            await self.bot.say("I will now notify this server of opened "
+                               "rifts.")
+        else:
+            await self.bot.say("I will no longer notify this server of "
+                               "opened rifts.")
 
     @rift.command(name="open", pass_context=True)
     async def _rift_open(self, ctx, *, channel):
-        """Opens a rift to another channel
+        """Opens a rift to another channel.
 
         <channel> may be any channel or user that the bot is connected to,
-        even accross servers."""
+        even across servers."""
         def _check(message):
             try:
                 return matches[int(message.content)] or True
@@ -99,7 +121,8 @@ class Rift:
             return await self.bot.say("This rift already exists.")
 
         self.open_rifts[rift] = {}
-        if self.settings["NOTIFY"] or channel.is_private:
+        if channel.is_private or channel.server.id not in \
+                self.settings["NOTIFY"]:
             try:
                 await self.bot.send_message(channel, "**{}** has opened a "
                                             "rift to here.".format(author))
@@ -117,8 +140,7 @@ class Rift:
     async def _rift_close(self, ctx):
         """Closes all rifts that lead to this channel.
 
-        The rifts' source channels will be notified regardless of the notify
-        setting."""
+        The rifts' source channels will be notified."""
         author = ctx.message.author
         channel = ctx.message.channel
         await self._close_rift(author, channel, True)
@@ -132,22 +154,6 @@ class Rift:
         owner = ctx.message.author.id == self.bot.settings.owner
         if str(ctx.invoked_subcommand) == "rift blacklist":
             await send_cmd_help(ctx)
-            if self.settings["BLACKLIST"]:
-                channels = []
-                for c in self.settings["BLACKLIST"]:
-                    channel = discord.utils.get(self.bot.get_all_channels()
-                                                if owner else
-                                                ctx.message.server.channels,
-                                                id=c)
-                    if channel:
-                        channels.append(channel)
-                    else:
-                        if owner:
-                            channels.append("Direct Message ({})".format(c))
-                if channels:
-                    for page in pagify("Blacklist: {}".format(", ".join(
-                            channels)), [", "]):
-                        await self.bot.say("```{}```".format(page.strip(", ")))
 
     @blacklist.command(name="add", pass_context=True)
     async def _blacklist_add(self, ctx, *, channel: discord.Channel=None):
@@ -170,7 +176,7 @@ class Rift:
     async def _blacklist_remove(self, ctx, *, channel: discord.Channel=None):
         """Remove the channel from the blacklist.
 
-        If no channel is provided, the current channel is added."""
+        If no channel is provided, the current channel is removed."""
         channel = channel if channel else ctx.message.channel
         blacklist = self.settings["BLACKLIST"]
         if channel.id not in blacklist:
@@ -180,6 +186,36 @@ class Rift:
         dataIO.save_json("data/rift/settings.json", self.settings)
         await self.bot.say("{} has been removed from the blacklist."
                            .format(channel))
+
+    @blacklist.command(name="list", pass_context=True)
+    async def _blacklist_list(self, ctx):
+        """Lists currently blacklisted channels."""
+        channel = ctx.message.channel
+        if channel.is_private:
+            if channel.id in self.settings["BLACKLIST"]:
+                return await self.bot.say("This channel is blacklisted.")
+            else:
+                return await self.bot.say("This channel is not blacklisted.")
+        else:
+            if self.settings["BLACKLIST"]:
+                is_owner = ctx.message.author.id == self.bot.settings.owner
+                channels = []
+                for c in self.settings["BLACKLIST"]:
+                    channel = discord.utils.get(self.bot.get_all_channels()
+                                                if is_owner else
+                                                ctx.message.server.channels,
+                                                id=c)
+                    if channel:
+                        channels.append(channel)
+                    else:
+                        if is_owner:
+                            channels.append("Unknown ({})".format(c))
+                if channels:
+                    for page in pagify("Blacklist: {}".format(", ".join(
+                            channels)), [", "]):
+                        return await self.bot.say("```{}```".format(
+                            page.strip(", ")))
+            return await self.bot.say("The blacklist is empty.")
 
     @blacklist.command(name="clear")
     @checks.is_owner()
@@ -235,10 +271,9 @@ class Rift:
                 noclose = False
                 await self.bot.say("Rift from **{}** closed.".format(
                     rift.source))
-                await self.bot.send_message(rift.source, "**{}** has "
-                                            "closed the rift to "
-                                            "**{}**.".format(
-                                                author, channel))
+                await self.bot.send_message(
+                    rift.source, "**{}** has closed the rift to **{}**."
+                    .format(author, channel))
         if noclose and notif:
             await self.bot.say("No rifts were found that connect to here.")
 
@@ -275,6 +310,46 @@ class Rift:
         matches.discard(self.bot.user)
         return matches
 
+    async def _process_message(self, rift, message, dest):
+        send = message.channel == rift.source
+        destination = rift.destination if send else rift.source
+        me = self.bot.user if destination.is_private else destination.server.me
+        author = message.author
+        sauthor = self.bot.user if destination.is_private else destination.server.get_member(author.id)
+        perms = destination.permissions_for(sauthor)
+        isowner = author.id == self.bot.settings.owner
+        if send and (sauthor is None or not isowner and not
+                     perms.send_messages):
+            raise discord.Forbidden(403, "Forbidden")
+        content = message.content
+        embed = None
+        if not isowner or not send:
+            content = "{}: {}".format(author, content)
+        if not isowner and not destination.permissions_for(
+                sauthor).mention_everyone:
+            content = escape(content, mass_mentions=True)
+        if message.attachments and (isowner or
+                                    destination.permissions_for(
+                                        sauthor).attach_files):
+            if destination.permissions_for(me).embed_links:
+                attach = message.attachments[0]
+                embed = discord.Embed(description="{}\n**[{}]({})**".format(
+                    xbytes(attach["size"]), attach["filename"], attach["url"]),
+                                      colour=randint(0, 0xFFFFFF))
+                embed.set_image(url=message.attachments[0]["url"])
+                if len(message.attachments) > 1:
+                    rest = message.attachments[1:]
+                    embed.set_footer(" | ".join("**[{}]({})** ({})".format(
+                        a["filename"], a["url"], xbytes(a["size"]))
+                                                for a in rest))
+            else:
+                content += "\n\n" + "\n".join("{} ({})".format(a["url"], xbytes(a["size"])) for a in
+                                            message.attachments)
+        if isinstance(dest, discord.Message):
+            return await self.bot.edit_message(dest, content, embed=embed)
+        else:
+            return await self.bot.send_message(dest, content, embed=embed)
+
     async def on_message(self, message):
         if message.author == self.bot.user:
             return
@@ -284,37 +359,41 @@ class Rift:
                     message.author:
                 if message.content.lower() == "exit":
                     del self.open_rifts[rift]
-                    if self.settings["NOTIFY"]:
-                        await self.bot.send_message(rift.destination,
-                                                    "**{}** has closed the "
-                                                    "rift.".format(
-                                                        rift.author))
+                    if rift.destination.server.id not in \
+                            self.settings["NOTIFY"]:
+                        try:
+                            await self.bot.send_message(
+                                rift.destination, "**{}** has closed the rift."
+                                .format(rift.author))
+                        except Exception:
+                            pass
                     await self.bot.send_message(rift.source, "Rift closed.")
                 else:
                     if not self._is_command(message):
                         try:
-                            rec[message] = await self.bot.send_message(
-                                rift.destination, message.content)
-                        except Exception:
-                            await self.bot.send_message(rift.source,
-                                                        "I couldn't send your "
-                                                        "message.")
+                            rec[message] = await self._process_message(
+                                rift, message, rift.destination)
+                        except Exception as e:
+                            await self.bot.send_message(
+                                rift.source, "I couldn't send your message: `{}`".format(str(e)))
             elif rift.destination == message.channel:
                 tup = (rift.source, rift.destination)
                 if tup in sent:
                     rec[message] = sent[tup]
                 else:
-                    rec[message] = sent[tup] = await self.bot.send_message(
-                        rift.source, escape("{}: {}".format(
-                            message.author, message.content),
-                            mass_mentions=True))
+                    rec[message] = sent[tup] = await self._process_message(
+                        rift, message, rift.source)
 
     async def on_message_delete(self, message):
         if message.author == self.bot.user:
             return
-        for rift, rec in self.open_rifts.items():
+        deleted = set()
+        for rec in self.open_rifts.copy().values():
             try:
-                await self.bot.delete_message(rec.pop(message))
+                dup = rec.pop(message)
+                if dup not in deleted:
+                    deleted.add(dup)
+                    await self.bot.delete_message(dup)
             except (KeyError, discord.errors.NotFound):
                 continue
 
@@ -326,18 +405,16 @@ class Rift:
             if rift.source == before.channel and rift.author == \
                     before.author:
                 try:
-                    await self.bot.edit_message(rec[after], after.content)
-                except KeyError:
+                    await self._process_message(rift, after, rec[after])
+                except (KeyError, discord.errors.NotFound):
                     continue
             elif rift.destination == before.channel:
                 tup = (rift.source, rift.destination)
                 if tup not in sent:
                     try:
-                        await self.bot.edit_message(rec[after], escape(
-                            "{}: {}".format(after.author, after.content),
-                            mass_mentions=True))
                         sent.add(tup)
-                    except KeyError:
+                        await self._process_message(rift, after, rec[after])
+                    except (KeyError, discord.errors.NotFound):
                         continue
 
 
@@ -352,7 +429,7 @@ def _check_files():
     fil = "data/rift/settings.json"
     if not dataIO.is_valid_json(fil):
         print("Creating default {}...".format(fil))
-        dataIO.save_json(fil, {"NOTIFY": False, "BLACKLIST": []})
+        dataIO.save_json(fil, {"NOTIFY": [], "BLACKLIST": []})
 
 
 def setup(bot):
