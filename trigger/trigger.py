@@ -524,6 +524,7 @@ class Trigger:
             for p in payload:
                 resp_type, resp = self.elaborate_response(trigger, p)
                 if resp_type == "text":
+                    resp.format(message=message)
                     await self.bot.send_message(channel, resp)
                 elif resp_type == "file":
                     await self.bot.send_file(channel, resp)
