@@ -125,32 +125,44 @@ class Cleverbot():
         author = message.author
         channel = message.channel
 
-        if message.author.id != self.bot.user.id:
-            to_strip = "@" + author.server.me.display_name + " "
-            text = message.clean_content
-            if not text.startswith(to_strip):
-                return
-            text = text.replace(to_strip, "", 1)
-            await self.bot.send_typing(channel)
-            try:
-                response = await self.get_response(author, text)
-            except NoCredentials:
-                await self.bot.send_message(channel, "The owner needs to set the credentials first.\n"
-                                                     "See: `[p]cleverbot apikey`")
-            except APIError:
-                await self.bot.send_message(channel, "Error contacting the API.")
-            except InvalidCredentials:
-                await self.bot.send_message(channel, "The token that has been set is not valid.\n"
-                                                     "See: `[p]cleverbot apikey`")
-            except OutOfRequests:
-                await self.bot.send_message(channel, "You have ran out of requests for this month. "
-                                                     "The free tier has a 5000 requests a month limit.")
-            except OutdatedCredentials:
-                await self.bot.send_message(channel, "You need a valid cleverbot.com api key for this to "
-                                                     "work. The old cleverbot.io service will soon be no "
-                                                     "longer active. See `[p]help cleverbot apikey`")
-            else:
-                await self.bot.send_message(channel, response)
+        if message.author.id == self.bot.user.id:
+            return
+
+        content = message.content
+
+        # I can't just .replace the .mention for a dumb mobile-only bug
+        # related to nicknames
+        name_mention = "<@{}>".format(self.bot.user.id)
+        nick_mention = "<@!{}>".format(self.bot.user.id)
+
+        if content.startswith(name_mention):
+            text = message.content.replace(name_mention, "", 1).strip()
+        elif content.startswith(nick_mention):
+            text = message.content.replace(nick_mention, "", 1).strip()
+        else:
+            return
+
+        await self.bot.send_typing(channel)
+        
+        try:
+            response = await self.get_response(author, text)
+        except NoCredentials:
+            await self.bot.send_message(channel, "The owner needs to set the credentials first.\n"
+                                                 "See: `[p]cleverbot apikey`")
+        except APIError:
+            await self.bot.send_message(channel, "Error contacting the API.")
+        except InvalidCredentials:
+            await self.bot.send_message(channel, "The token that has been set is not valid.\n"
+                                                 "See: `[p]cleverbot apikey`")
+        except OutOfRequests:
+            await self.bot.send_message(channel, "You have ran out of requests for this month. "
+                                                 "The free tier has a 5000 requests a month limit.")
+        except OutdatedCredentials:
+            await self.bot.send_message(channel, "You need a valid cleverbot.com api key for this to "
+                                                 "work. The old cleverbot.io service will soon be no "
+                                                 "longer active. See `[p]help cleverbot apikey`")
+        else:
+            await self.bot.send_message(channel, response)
 
 
 def check_folders():
