@@ -488,14 +488,16 @@ class Trigger:
         return False
 
     def elaborate_response(self, trigger, r):
-        if trigger.owner != self.bot.settings.owner:
+        settings = self.bot.settings
+        is_owner = (trigger.owner == settings.owner or
+                    trigger.owner in settings.co_owners)
+        if not is_owner:
             return "text", r
         if not r.startswith("file:"):
             return "text", r
         else:
             path = r.replace("file:", "").strip()
         path = os.path.join("data", "trigger", "files", path)
-        print(path)
         if os.path.isfile(path):
             return "file", path
         else:
@@ -626,9 +628,12 @@ class TriggerObj:
             raise RuntimeError("Invalid trigger type.")
 
     def can_edit(self, user):
+        settings = self.bot.settings
         server = user.server
-        admin_role = self.bot.settings.get_server_admin(server)
-        is_owner = user.id == self.bot.settings.owner
+        admin_role = settings.get_server_admin(server)
+        # Using the is_owner_check would be better but I don't always have
+        # context here, nor I feel like mocking it
+        is_owner = user.id == settings.owner or user.id in settings.co_owners
         is_admin = discord.utils.get(user.roles, name=admin_role) is not None
         is_trigger_owner = user.id == self.owner
         trigger_is_global = self.server is None
