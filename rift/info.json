@@ -5,5 +5,5 @@
     "DISABLED" : false,
     "NAME" : "Rift",
     "TAGS" : ["cross server", "communication", "fun", "trolling", "impersonation"],
-    "INSTALL_MSG" : "`[p]riftopen` to use it. Remember to type only the channel name. Have fun!"
+    "INSTALL_MSG" : "`[p]riftopen` to use it. Remember to type only the channel name. Have fun!\nThis command is usable by everyone. If you want to restrict it to certain users you might want to download the 'permissions' cog."
 }
