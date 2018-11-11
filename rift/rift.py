@@ -35,7 +35,6 @@ class Rift:
                     if c.name.lower() == channel.lower() or c.id == channel]
         channels = [c for c in channels if c.type == discord.ChannelType.text]
 
-
         if not channels:
             await self.bot.say("No channels found. Remember to type just "
                                "the channel name, no `#`.")
@@ -57,13 +56,14 @@ class Rift:
             channel = channels[int(choice.content)]
         else:
             channel = channels[0]
-        
-        if author in self.open_rifts:
-            await self.bot.say("You already have a rift opened!")
+
+        if "{}-{}".format(author.id, channel.id) in self.open_rifts:
+            await self.bot.say("You already have a rift opened here!")
             return
-        
-        self.open_rifts[author] = OpenRift(source=author_channel, destination=channel)
-        
+
+        self.open_rifts["{}-{}".format(author.id, channel.id)] = OpenRift(source=author_channel,
+                                                                          destination=channel)
+
         await self.bot.say("A rift has been opened! Everything you say "
                            "will be relayed to that channel.\n"
                            "Responses will be relayed here.\nType "
@@ -79,7 +79,7 @@ class Rift:
                     await self.bot.say("Couldn't send your message.")
             else:
                 break
-        del self.open_rifts[author]
+        del self.open_rifts["{}-{}".format(author.id, channel.id)]
         await self.bot.say("Rift closed.")
 
     async def on_message(self, message):
