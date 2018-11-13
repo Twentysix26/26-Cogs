@@ -57,12 +57,15 @@ class Rift:
         else:
             channel = channels[0]
 
-        if "{}-{}".format(author.id, channel.id) in self.open_rifts:
-            await self.bot.say("You already have a rift opened here!")
+        key = "{}-{}".format(author.id, channel.id)
+
+        if key in self.open_rifts:
+            await self.bot.say("You already have a rift opened for that "
+                               "channel!")
             return
 
-        self.open_rifts["{}-{}".format(author.id, channel.id)] = OpenRift(source=author_channel,
-                                                                          destination=channel)
+        self.open_rifts[key] = OpenRift(source=author_channel,
+                                        destination=channel)
 
         await self.bot.say("A rift has been opened! Everything you say "
                            "will be relayed to that channel.\n"
@@ -79,7 +82,7 @@ class Rift:
                     await self.bot.say("Couldn't send your message.")
             else:
                 break
-        del self.open_rifts["{}-{}".format(author.id, channel.id)]
+        del self.open_rifts[key]
         await self.bot.say("Rift closed.")
 
     async def on_message(self, message):
