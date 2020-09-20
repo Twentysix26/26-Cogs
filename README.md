@@ -1,5 +1,4 @@
 # 26-Cogs
-General purpose cogs repository for [Red-DiscordBot](https://github.com/Twentysix26/Red-DiscordBot)
+This repository, just like Red v2, is no longer being maintained.
 
-Meant to be used with Red's downloader by adding it with:  
-`[p]cog repo add 26-Cogs https://github.com/Twentysix26/26-Cogs`
+If you're looking for v3 cogs you can find [the repository here](https://github.com/Twentysix26/x26-Cogs).
